@@ -22,6 +22,7 @@ const props = defineProps<{
 
 const { own, update } = useOwnDocs(props.roomId)
 const failed = ref(false)
+const busy = ref(false)
 
 async function run(fn: () => Promise<void>): Promise<boolean> {
   try {
@@ -59,31 +60,48 @@ const myVoteFor = (claimId: string) => active.value.find((v) => v.claimId === cl
 const claimText = ref('')
 const claimError = ref(false)
 async function addClaim() {
+  if (busy.value) return
   const text = validateClaim(claimText.value)
   claimError.value = !text
   if (!text) return
   const id = createDocId()
-  if (await run(() => props.writeDoc('claims', id, { text, at: new Date().toISOString() }))) {
-    update((o) => ({ ...o, claims: [...o.claims, id] }))
-    claimText.value = ''
-  }
+  busy.value = true
+  try {
+    if (await run(() => props.writeDoc('claims', id, { text, at: new Date().toISOString() }))) {
+      update((o) => ({ ...o, claims: [...o.claims, id] }))
+      claimText.value = ''
+    }
+  } finally { busy.value = false }
 }
 
 async function removeClaim(claimId: string) {
+  if (busy.value) return
   const voteIds = Object.entries(votes.value).filter(([, v]) => v.claimId === claimId).map(([id]) => id)
-  const ok = await run(async () => {
-    await props.deleteDoc('claims', claimId)
-    for (const id of voteIds) await props.deleteDoc('votes', id)
-  })
+  busy.value = true
+  let ok = false
+  try {
+    ok = await run(async () => {
+      await props.deleteDoc('claims', claimId)
+      for (const id of voteIds) await props.deleteDoc('votes', id)
+    })
+  } finally { busy.value = false }
   if (ok) update((o) => ({ claims: o.claims.filter((c) => c !== claimId), votes: o.votes.filter((v) => !voteIds.includes(v)) }))
 }
 
 async function vote(claimId: string) {
+  if (busy.value || myVoteFor(claimId) || remaining.value <= 0) return
   const id = createDocId()
-  if (await run(() => props.writeDoc('votes', id, { claimId }))) update((o) => ({ ...o, votes: [...o.votes, id] }))
+  busy.value = true
+  try {
+    if (await run(() => props.writeDoc('votes', id, { claimId }))) update((o) => ({ ...o, votes: [...o.votes, id] }))
+  } finally { busy.value = false }
 }
 async function unvote(voteId: string) {
-  if (await run(() => props.deleteDoc('votes', voteId))) update((o) => ({ ...o, votes: o.votes.filter((v) => v !== voteId) }))
+  if (busy.value) return
+  busy.value = true
+  try {
+    if (await run(() => props.deleteDoc('votes', voteId))) update((o) => ({ ...o, votes: o.votes.filter((v) => v !== voteId) }))
+  } finally { busy.value = false }
 }
 
 // Checklist
