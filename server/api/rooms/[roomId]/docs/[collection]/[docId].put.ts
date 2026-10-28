@@ -2,7 +2,8 @@ export default defineEventHandler((event) => withHttpErrors(async () => {
   const roomId = getRouterParam(event, 'roomId') ?? ''
   const collection = getRouterParam(event, 'collection') ?? ''
   const docId = getRouterParam(event, 'docId') ?? ''
-  const text = (await readRawBody(event, 'utf8')) ?? ''
+  await roomStore().loadRoom(roomId)
+  const text = await readLimitedBody(event.node.req)
   let body: unknown
   try {
     body = JSON.parse(text)

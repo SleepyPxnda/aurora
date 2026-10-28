@@ -13,12 +13,6 @@ export default defineNuxtConfig({
     dataDir: '.data',
   },
 
-  nitro: {
-    storage: {
-      rooms: { driver: 'fs', base: process.env.NUXT_DATA_DIR || '.data' },
-    },
-  },
-
   vite: {
     plugins: [tailwindcss()],
   },
