@@ -39,6 +39,16 @@ export function useRoom(roomId: string) {
     await refresh()
   }
 
+  async function mergeDoc(collection: string, docId: string, body: Record<string, unknown>) {
+    await $fetch(`/api/rooms/${roomId}/docs/${collection}/${docId}`, { method: 'PATCH', body })
+    await refresh()
+  }
+
+  async function deleteDoc(collection: string, docId: string) {
+    await $fetch(`/api/rooms/${roomId}/docs/${collection}/${docId}`, { method: 'DELETE' })
+    await refresh()
+  }
+
   onMounted(async () => {
     await refresh()
     if (status.value === 'ok') {
@@ -48,5 +58,5 @@ export function useRoom(roomId: string) {
   })
   onBeforeUnmount(() => clearInterval(timer))
 
-  return { docs, status, admin, writeDoc }
+  return { docs, status, admin, writeDoc, mergeDoc, deleteDoc }
 }

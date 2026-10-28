@@ -10,6 +10,7 @@ export interface RoomStorage {
   getItem: (key: string) => Promise<unknown>
   setItem: (key: string, value: unknown) => Promise<void>
   hasItem: (key: string) => Promise<boolean>
+  removeItem: (key: string) => Promise<void>
   getKeys: (base?: string) => Promise<string[]>
 }
 
@@ -31,7 +32,40 @@ const NOT_FOUND = 'Not found'
 const metaKey = (id: string) => `${id}:meta`
 const docKey = (id: string, c: string, d: string) => `${id}:docs:${c}:${d}`
 
+const isPlain = (v: unknown): v is Record<string, unknown> =>
+  v !== null && typeof v === 'object' && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype
+
+function checkTarget(collection: string, docId: string) {
+  if (!(COLLECTIONS as readonly string[]).includes(collection)) throw new HttpError(400, 'Invalid collection')
+  if (!DOC_ID_PATTERN.test(docId)) throw new HttpError(400, 'Invalid docId')
+}
+
+function checkBody(body: unknown): asserts body is Record<string, unknown> {
+  if (!isPlain(body)) throw new HttpError(400, 'Body must be an object')
+}
+
+// Plain objects merge recursively, everything else replaces.
+function deepMerge(base: Record<string, unknown>, patch: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...base }
+  for (const [k, v] of Object.entries(patch)) {
+    if (k === '__proto__') continue
+    const cur = out[k]
+    out[k] = isPlain(v) && isPlain(cur) ? deepMerge(cur, v) : v
+  }
+  return out
+}
+
 export function createRoomStore(storage: RoomStorage) {
+  async function put(roomId: string, collection: string, docId: string, doc: Record<string, unknown>) {
+    if (Buffer.byteLength(JSON.stringify(doc)) > MAX_DOC_BYTES) throw new HttpError(400, 'Document too large')
+    const key = docKey(roomId, collection, docId)
+    if (!(await storage.hasItem(key))) {
+      const count = (await storage.getKeys(`${roomId}:docs:`)).length
+      if (count >= MAX_DOCS_PER_ROOM) throw new HttpError(413, 'Too many documents')
+    }
+    await storage.setItem(key, doc)
+  }
+
   async function assertRoom(roomId: string): Promise<RoomMeta> {
     if (!isValidRoomId(roomId)) throw new HttpError(404, NOT_FOUND)
     const meta = (await storage.getItem(metaKey(roomId))) as RoomMeta | null
@@ -73,17 +107,23 @@ export function createRoomStore(storage: RoomStorage) {
 
     async writeDoc(roomId: string, collection: string, docId: string, body: unknown) {
       await assertRoom(roomId)
-      if (!(COLLECTIONS as readonly string[]).includes(collection)) throw new HttpError(400, 'Invalid collection')
-      if (!DOC_ID_PATTERN.test(docId)) throw new HttpError(400, 'Invalid docId')
-      if (body === null || typeof body !== 'object' || Array.isArray(body)
-        || Object.getPrototypeOf(body) !== Object.prototype) throw new HttpError(400, 'Body must be an object')
-      if (Buffer.byteLength(JSON.stringify(body)) > MAX_DOC_BYTES) throw new HttpError(400, 'Document too large')
-      const key = docKey(roomId, collection, docId)
-      if (!(await storage.hasItem(key))) {
-        const count = (await storage.getKeys(`${roomId}:docs:`)).length
-        if (count >= MAX_DOCS_PER_ROOM) throw new HttpError(413, 'Too many documents')
-      }
-      await storage.setItem(key, body)
+      checkTarget(collection, docId)
+      checkBody(body)
+      await put(roomId, collection, docId, body)
+    },
+
+    async mergeDoc(roomId: string, collection: string, docId: string, body: unknown) {
+      await assertRoom(roomId)
+      checkTarget(collection, docId)
+      checkBody(body)
+      const existing = await storage.getItem(docKey(roomId, collection, docId))
+      await put(roomId, collection, docId, deepMerge(isPlain(existing) ? existing : {}, body))
+    },
+
+    async deleteDoc(roomId: string, collection: string, docId: string) {
+      await assertRoom(roomId)
+      checkTarget(collection, docId)
+      await storage.removeItem(docKey(roomId, collection, docId))
     },
   }
 }
