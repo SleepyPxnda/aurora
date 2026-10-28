@@ -6,23 +6,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 
 const route = useRoute()
 const roomId = String(route.params.roomId)
-const { docs, status, admin, writeDoc } = useRoom(roomId)
+const { docs, status, admin, writeDoc, mergeDoc, deleteDoc } = useRoom(roomId)
 const displayName = useDisplayName()
 
 const nameInput = ref('')
 const nameError = ref(false)
 function submitName() {
   nameError.value = !displayName.save(nameInput.value)
-}
-
-const system = ref('')
-const editing = ref(false)
-const remoteSystem = computed(() => String(docs.value.review?.main?.system ?? ''))
-watch(remoteSystem, (v) => { if (!editing.value) system.value = v }, { immediate: true })
-
-async function saveSystem() {
-  editing.value = false
-  await writeDoc('review', 'main', { system: system.value })
 }
 </script>
 
@@ -48,10 +38,7 @@ async function saveSystem() {
         <Alert v-if="admin === 'invalid'">
           <AlertDescription>Admin-Link ungültig. Du bist als Teilnehmer:in im Raum.</AlertDescription>
         </Alert>
-        <div class="flex flex-col gap-2">
-          <Label for="system">Name des Systems</Label>
-          <Input id="system" v-model="system" @focus="editing = true" @blur="saveSystem" />
-        </div>
+        <MissionStep :room-id="roomId" :docs="docs" :merge-doc="mergeDoc" :write-doc="writeDoc" :delete-doc="deleteDoc" />
       </template>
     </template>
   </main>
