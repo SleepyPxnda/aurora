@@ -56,6 +56,13 @@
 - Every endpoint under `/api/rooms/:roomId` returns 404 with the same message for an unknown or malformed room ID. It does not reveal which of the two applies.
 - The room page for an unknown room shows "Diesen Raum gibt es nicht. Prüf den Link." with a link "Neuen Raum anlegen" to `/`. It does not ask for a display name.
 
+## Fonts
+
+- Geist and Geist Mono are served from aurora's own origin. Pages load no font from a third-party host, so the browser sends no request to `fonts.googleapis.com` or `fonts.gstatic.com`.
+- The fonts are the variable woff2 files of the pinned `geist` npm package. The build bundles them unchanged, so the copyright and license notices in the font files stay with them.
+- Body text uses `--font-sans` (Geist, then a system sans-serif stack). Numbers with `font-mono` use `--font-mono` (Geist Mono, then a system monospace stack).
+- Fonts load with `font-display: swap`: text shows in the fallback font until the font file arrives.
+
 ## Step 1 Mission Statement
 
 - `review/main` holds `system`, `inScope`, `outScope` (text) and `mscheck.q1` to `mscheck.q7` (booleans). Each field is saved through PATCH, so the other keys stay unchanged. Incoming changes do not overwrite a focused frame field.
