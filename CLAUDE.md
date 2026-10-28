@@ -22,9 +22,9 @@ aurora guides a team of 3 to 12 people through a LASR architecture review (missi
 - `app/` – Nuxt 4 app (pages, components, composables)
 - `app/components/ui/` – shadcn-vue components, added via the MCP server or `pnpm dlx shadcn-vue add`
 - `app/lib/utils.ts` – `cn` class-name helper for shadcn-vue
-- `app/lib/mission.ts` – step 1 pure logic: the marked assumptions (votes, top group, tie rule), checklist questions, claim validation, counts, top claims
+- `app/lib/mission.ts` – step 1 pure logic: the marked assumptions (votes, top group, tie rule), checklist questions, claim validation, counts, top claims, ownership by display name
 - `app/assets/css/main.css` – Tailwind v4 entry and theme variables
-- `server/` – Nitro server: `api/` (room endpoints), `utils/` (room IDs, room store, admin check), `plugins/` (storage mount)
+- `server/` – Nitro server: `api/` (room and `auth/` endpoints), `utils/` (room IDs, room store, admin check, login session in `auth.ts`), `plugins/` (storage mount)
 - `public/` – static assets
 - `tests/` – vitest tests (`tests/**/*.test.ts`)
 

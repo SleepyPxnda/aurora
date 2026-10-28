@@ -7,20 +7,19 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
-  activeVotes, countVotes, createDocId, listClaims, MSCHECK_QUESTIONS, remainingVotes, TOP_GROUP_SIZE,
+  activeVotes, countVotes, createDocId, isOwnClaim, listClaims, MSCHECK_QUESTIONS, remainingVotes, TOP_GROUP_SIZE,
   topClaimIds, validateClaim, VOTES_PER_PERSON, type VoteDocs,
 } from '@/lib/mission'
 
 type Docs = Record<string, Record<string, Record<string, unknown>>>
 const props = defineProps<{
-  roomId: string
+  name: string
   docs: Docs
   mergeDoc: (c: string, id: string, body: Record<string, unknown>) => Promise<void>
   writeDoc: (c: string, id: string, body: Record<string, unknown>) => Promise<void>
   deleteDoc: (c: string, id: string) => Promise<void>
 }>()
 
-const { own, update } = useOwnDocs(props.roomId)
 const failed = ref(false)
 const busy = ref(false)
 
@@ -53,7 +52,7 @@ const claims = computed(() => listClaims(props.docs.claims as never))
 const votes = computed(() => (props.docs.votes ?? {}) as VoteDocs)
 const counts = computed(() => countVotes(claims.value, votes.value))
 const top = computed(() => topClaimIds(counts.value))
-const active = computed(() => activeVotes(own.value.votes, claims.value, votes.value))
+const active = computed(() => activeVotes(props.name, claims.value, votes.value))
 const remaining = computed(() => remainingVotes(active.value))
 const myVoteFor = (claimId: string) => active.value.find((v) => v.claimId === claimId)
 
@@ -67,8 +66,7 @@ async function addClaim() {
   const id = createDocId()
   busy.value = true
   try {
-    if (await run(() => props.writeDoc('claims', id, { text, at: new Date().toISOString() }))) {
-      update((o) => ({ ...o, claims: [...o.claims, id] }))
+    if (await run(() => props.writeDoc('claims', id, { text, at: new Date().toISOString(), author: props.name }))) {
       claimText.value = ''
     }
   } finally { busy.value = false }
@@ -78,14 +76,12 @@ async function removeClaim(claimId: string) {
   if (busy.value) return
   const voteIds = Object.entries(votes.value).filter(([, v]) => v.claimId === claimId).map(([id]) => id)
   busy.value = true
-  let ok = false
   try {
-    ok = await run(async () => {
+    await run(async () => {
       await props.deleteDoc('claims', claimId)
       for (const id of voteIds) await props.deleteDoc('votes', id)
     })
   } finally { busy.value = false }
-  if (ok) update((o) => ({ claims: o.claims.filter((c) => c !== claimId), votes: o.votes.filter((v) => !voteIds.includes(v)) }))
 }
 
 async function vote(claimId: string) {
@@ -93,14 +89,14 @@ async function vote(claimId: string) {
   const id = createDocId()
   busy.value = true
   try {
-    if (await run(() => props.writeDoc('votes', id, { claimId }))) update((o) => ({ ...o, votes: [...o.votes, id] }))
+    await run(() => props.writeDoc('votes', id, { claimId, author: props.name }))
   } finally { busy.value = false }
 }
 async function unvote(voteId: string) {
   if (busy.value) return
   busy.value = true
   try {
-    if (await run(() => props.deleteDoc('votes', voteId))) update((o) => ({ ...o, votes: o.votes.filter((v) => v !== voteId) }))
+    await run(() => props.deleteDoc('votes', voteId))
   } finally { busy.value = false }
 }
 
@@ -150,7 +146,7 @@ const tick = (key: string, v: boolean | 'indeterminate') =>
           <span class="font-mono">{{ counts[c.id] }}</span>
           <Button v-if="myVoteFor(c.id)" variant="outline" size="sm" @click="unvote(myVoteFor(c.id)!.voteId)">Stimme zurücknehmen</Button>
           <Button v-else size="sm" :disabled="remaining === 0" @click="vote(c.id)">Stimme geben</Button>
-          <Button v-if="own.claims.includes(c.id)" variant="ghost" size="sm" @click="removeClaim(c.id)">Löschen</Button>
+          <Button v-if="isOwnClaim(name, c)" variant="ghost" size="sm" @click="removeClaim(c.id)">Löschen</Button>
         </li>
       </ul>
     </div>

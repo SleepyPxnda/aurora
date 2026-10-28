@@ -29,6 +29,7 @@ function submitName() {
       <form v-if="!displayName.name.value" class="flex flex-col gap-2" @submit.prevent="submitName">
         <Label for="display-name">Dein Anzeigename</Label>
         <Input id="display-name" v-model="nameInput" />
+        <p class="text-sm text-muted-foreground">Mit demselben Namen findest du deine Stimmen und Claims wieder, auch auf einem anderen Gerät.</p>
         <p v-if="nameError" role="alert" class="text-sm text-destructive">Bitte gib 1 bis 40 Zeichen ein.</p>
         <Button type="submit" class="self-start">Weiter</Button>
       </form>
@@ -38,7 +39,7 @@ function submitName() {
         <Alert v-if="admin === 'invalid'">
           <AlertDescription>Admin-Link ungültig. Du bist als Teilnehmer:in im Raum.</AlertDescription>
         </Alert>
-        <MissionStep :room-id="roomId" :docs="docs" :merge-doc="mergeDoc" :write-doc="writeDoc" :delete-doc="deleteDoc" />
+        <MissionStep :name="displayName.name.value" :docs="docs" :merge-doc="mergeDoc" :write-doc="writeDoc" :delete-doc="deleteDoc" />
       </template>
     </template>
   </main>
