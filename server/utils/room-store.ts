@@ -18,6 +18,7 @@ interface RoomMeta {
   id: string
   adminTokenHash: string
   createdAt: string
+  ownerSub: string
 }
 
 export type RoomDocs = Record<string, Record<string, unknown>>
@@ -74,10 +75,10 @@ export function createRoomStore(storage: RoomStorage) {
   }
 
   return {
-    async createRoom() {
+    async createRoom(ownerSub: string) {
       const roomId = createRoomId()
       const adminToken = createAdminToken()
-      const meta: RoomMeta = { id: roomId, adminTokenHash: hashToken(adminToken), createdAt: new Date().toISOString() }
+      const meta: RoomMeta = { id: roomId, adminTokenHash: hashToken(adminToken), createdAt: new Date().toISOString(), ownerSub }
       await storage.setItem(metaKey(roomId), meta)
       return { roomId, adminToken }
     },

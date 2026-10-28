@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  activeVotes, countVotes, createDocId, listClaims, MSCHECK_QUESTIONS, remainingVotes, topClaimIds, validateClaim,
+  activeVotes, countVotes, createDocId, isOwnClaim, listClaims, sameName, MSCHECK_QUESTIONS, remainingVotes, topClaimIds, validateClaim,
   VOTES_PER_PERSON,
   type Claim,
 } from '../app/lib/mission'
@@ -29,10 +29,20 @@ describe('mission logic', () => {
     expect(out.map((c) => c.id)).toEqual(['c', 'a', 'b'])
   })
 
-  it('AC7: active votes ignore missing and orphaned own votes; remaining reaches 0', () => {
+  it('AC13: sameName ignores case and surrounding spaces; the own-claim check uses it', () => {
+    expect(sameName('Anna', '  anna ')).toBe(true)
+    expect(sameName('Anna', 'Anne')).toBe(false)
+    expect(isOwnClaim('Anna', { ...claim('a'), author: '  anna ' })).toBe(true)
+    expect(isOwnClaim('Anna', claim('a'))).toBe(false)
+  })
+
+  it('AC13: active votes match by author on existing claims, ignore authorless ones; remaining reaches 0', () => {
     const claims = [claim('a'), claim('b'), claim('c')]
-    const v = { v1: { claimId: 'a' }, v2: { claimId: 'gone' }, v3: { claimId: 'b' }, v4: { claimId: 'c' } }
-    const active = activeVotes(['v1', 'v2', 'v3', 'missing', 'v4'], claims, v)
+    const v = {
+      v1: { claimId: 'a', author: 'Anna' }, v2: { claimId: 'gone', author: 'Anna' }, v3: { claimId: 'b', author: ' anna' },
+      v4: { claimId: 'c', author: 'ANNA' }, v5: { claimId: 'a', author: 'Ben' }, v6: { claimId: 'b' },
+    }
+    const active = activeVotes('anna ', claims, v)
     expect(active.map((x) => x.voteId)).toEqual(['v1', 'v3', 'v4'])
     expect(remainingVotes(active)).toBe(0)
     expect(remainingVotes(active.slice(0, 1))).toBe(VOTES_PER_PERSON - 1)

@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { createRoomStore, MAX_DOCS_PER_ROOM } from '../server/utils/room-store'
+import { requireUser } from '../server/utils/auth'
 import { fakeStorage } from './helpers'
 
 async function setup() {
   const st = fakeStorage()
   const store = createRoomStore(st)
-  const { roomId, adminToken } = await store.createRoom()
+  const { roomId, adminToken } = await store.createRoom('sub-1')
   return { st, store, roomId, adminToken }
 }
 const status = (p: Promise<unknown>) => p.then(() => 0, (e) => e.statusCode)
@@ -18,6 +19,8 @@ describe('room store', () => {
     expect(JSON.stringify([...st.map.values()])).not.toContain(adminToken)
     expect(JSON.stringify(await store.loadRoom(roomId))).not.toContain(meta.adminTokenHash)
     expect(JSON.stringify(await store.listDocs(roomId))).not.toContain(meta.adminTokenHash)
+    expect(JSON.stringify(await store.loadRoom(roomId))).not.toContain('sub-1')
+    expect(JSON.stringify(await store.listDocs(roomId))).not.toContain('sub-1')
   })
 
   it('AC4: a second store over the same map reads the room', async () => {
@@ -38,7 +41,8 @@ describe('room store', () => {
     const { st, store, roomId } = await setup()
     const body = { system: 'x' }
     await store.writeDoc(roomId, 'review', 'main', body)
-    expect(Object.keys(st.map.get(`${roomId}:meta`) as object).sort()).toEqual(['adminTokenHash', 'createdAt', 'id'])
+    expect(Object.keys(st.map.get(`${roomId}:meta`) as object).sort()).toEqual(['adminTokenHash', 'createdAt', 'id', 'ownerSub'])
+    expect((st.map.get(`${roomId}:meta`) as { ownerSub: string }).ownerSub).toBe('sub-1')
     expect(st.map.get(`${roomId}:docs:review:main`)).toEqual(body)
   })
 
@@ -83,5 +87,13 @@ describe('room store', () => {
     expect(a.statusCode).toBe(404)
     expect(b.statusCode).toBe(404)
     expect(a.message).toBe(b.message)
+  })
+
+  it('AC1: room creation without a session writes nothing', async () => {
+    const st = fakeStorage()
+    const cfg = () => ({ oauth: { oidc: { clientId: 'a', clientSecret: 'b', openidConfig: 'https://x' } }, session: { password: 'x'.repeat(32) } })
+    const route = async () => createRoomStore(st).createRoom(await requireUser({}, async () => ({}), cfg))
+    expect(await status(route())).toBe(401)
+    expect(st.map.size).toBe(0)
   })
 })
