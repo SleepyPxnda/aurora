@@ -7,8 +7,8 @@ aurora guides a team of 3 to 12 people through a LASR architecture review (missi
 - **Language:** code, identifiers, file names, routes, URLs and commit messages in English. Only UI text is German: short, no emojis.
 - **LASR-faithful:** flow and calculation follow lasr-reviews.org. Where the method leaves gaps (points matrix, gap formula, target value steps), the assumption lives in one place in the code and is marked as an assumption.
 - **License:** use only the names of the 14 quality attributes and 8 risk categories, with our own descriptions. No official card texts, card design or illustrations. Authors, link and CC BY-SA 4.0 appear in the footer and in every export, adaptations marked.
-- **No login:** whoever has the room link can collaborate. Room IDs are random with at least 128 bits. The admin link is secret and checked on the server, never only in the client.
-- **Data minimal:** store only freely chosen display names. No tracking, no third-party analytics.
+- **Login only to create:** creating a room requires an OIDC login. Whoever has the room link collaborates as a guest with a freely chosen name, without login. Own votes and claims are recognised by that name, case-insensitive. Room IDs are random with at least 128 bits. The admin link is secret and checked on the server, never only in the client.
+- **Data minimal:** store only freely chosen display names and, for logged-in users, only the OIDC subject (`sub`), no e-mail or real name. No tracking, no third-party analytics.
 - **Compute, don't store:** results 1.0 and 2.0 are derived from the data. Only the manual correction in step 4 is stored.
 - **Small documents:** structured data (votes, cards, steps) are single documents; one vote is one document.
 - **One report model:** every export format is rendered from the same report model.
