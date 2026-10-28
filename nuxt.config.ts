@@ -8,6 +8,11 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   typescript: { strict: true },
 
+  runtimeConfig: {
+    // env NUXT_DATA_DIR
+    dataDir: '.data',
+  },
+
   vite: {
     plugins: [tailwindcss()],
   },
