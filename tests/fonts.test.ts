@@ -1,18 +1,13 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const root = resolve(__dirname, '..')
 const css = readFileSync(resolve(root, 'app/assets/css/main.css'), 'utf8')
+const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 
-function fontFace(family: string) {
-  const blocks = css.match(/@font-face\s*\{[^}]*\}/g) ?? []
-  return blocks.find(b => b.includes(`font-family: '${family}'`))
-}
-
-function weightRange(block: string) {
-  const m = block.match(/font-weight:\s*(\d+)\s+(\d+)/)
-  return m ? [Number(m[1]), Number(m[2])] : null
+function fontsourceCss(name: string) {
+  return readFileSync(resolve(root, 'node_modules/@fontsource-variable', name, 'index.css'), 'utf8')
 }
 
 describe('self-hosted fonts', () => {
@@ -20,29 +15,28 @@ describe('self-hosted fonts', () => {
     expect(css).not.toMatch(/fonts\.googleapis\.com|fonts\.gstatic\.com/)
   })
 
-  it('AC2: geist is an exact-pinned dependency', () => {
-    const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
-    expect(pkg.dependencies.geist).toMatch(/^\d+\.\d+\.\d+$/)
+  it.each(['geist', 'geist-mono'])('AC2: @fontsource-variable/%s is an exact-pinned dependency', (name) => {
+    expect(pkg.dependencies[`@fontsource-variable/${name}`]).toMatch(/^\d+\.\d+\.\d+$/)
+  })
+
+  it('AC2: the next-only geist package is gone', () => {
+    expect(pkg.dependencies.geist).toBeUndefined()
   })
 
   it.each([
-    ['Geist', 400, 700],
-    ['Geist Mono', 400, 600],
-  ])('AC3: @font-face for %s', (family, min, max) => {
-    const block = fontFace(family)
-    expect(block).toBeDefined()
-    const range = weightRange(block!)
-    expect(range).not.toBeNull()
-    expect(range![0]).toBeLessThanOrEqual(min)
-    expect(range![1]).toBeGreaterThanOrEqual(max)
-    expect(block).toMatch(/font-display:\s*swap/)
-    const url = block!.match(/url\('~~\/([^']+\.woff2)'\)/)
-    expect(url).not.toBeNull()
-    expect(existsSync(resolve(root, url![1]!))).toBe(true)
+    ['geist', 'Geist Variable'],
+    ['geist-mono', 'Geist Mono Variable'],
+  ])('AC3: main.css imports @fontsource-variable/%s, a local variable font with swap', (name, family) => {
+    expect(css).toContain(`@import "@fontsource-variable/${name}";`)
+    const face = fontsourceCss(name)
+    expect(face).toContain(`font-family: '${family}'`)
+    expect(face).toMatch(/font-weight:\s*100 900/)
+    expect(face).toMatch(/font-display:\s*swap/)
+    expect(face).not.toMatch(/url\(['"]?https?:/)
   })
 
-  it('AC4: font stacks start with the design-system families', () => {
-    expect(css).toMatch(/--font-sans:\s*'Geist',\s*\S/)
-    expect(css).toMatch(/--font-mono:\s*'Geist Mono',\s*\S/)
+  it('AC4: font stacks start with the fontsource families', () => {
+    expect(css).toMatch(/--font-sans:\s*'Geist Variable',\s*\S/)
+    expect(css).toMatch(/--font-mono:\s*'Geist Mono Variable',\s*\S/)
   })
 })

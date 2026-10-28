@@ -63,8 +63,8 @@
 ## Fonts
 
 - Geist and Geist Mono are served from aurora's own origin. Pages load no font from a third-party host, so the browser sends no request to `fonts.googleapis.com` or `fonts.gstatic.com`.
-- The fonts are the variable woff2 files of the pinned `geist` npm package. The build bundles them unchanged, so the copyright and license notices in the font files stay with them.
-- Body text uses `--font-sans` (Geist, then a system sans-serif stack). Numbers with `font-mono` use `--font-mono` (Geist Mono, then a system monospace stack).
+- The fonts are the variable woff2 files of the pinned `@fontsource-variable/geist` and `@fontsource-variable/geist-mono` packages (OFL-1.1), imported in `main.css`. The build bundles them unchanged, so the copyright and license notices in the font files stay with them.
+- Body text uses `--font-sans` (`Geist Variable`, then a system sans-serif stack). Numbers with `font-mono` use `--font-mono` (`Geist Mono Variable`, then a system monospace stack).
 - Fonts load with `font-display: swap`: text shows in the fallback font until the font file arrives.
 
 ## Step 1 Mission Statement
