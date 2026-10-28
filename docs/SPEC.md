@@ -29,7 +29,7 @@
 - On a room page, a browser without a valid stored name sees the prompt "Dein Anzeigename" with a "Weiter" button. The room is not shown until a name is saved.
 - Leading and trailing spaces are trimmed. The name must be 1 to 40 characters. Otherwise the field shows "Bitte gib 1 bis 40 Zeichen ein."
 - The name is stored in `localStorage` under `aurora.displayName`. Once saved, the prompt is skipped for every room in that browser.
-- The display name is stored in claims and votes as `author` (see below). Room metadata contain no names. Nothing stores IP addresses, user agents or browser identifiers.
+- The display name is stored in claims and votes as `author` (see below). Room metadata contains no names. Nothing stores IP addresses, user agents or browser identifiers.
 - Below the name field the prompt says "Mit demselben Namen findest du deine Stimmen und Claims wieder, auch auf einem anderen Gerät."
 
 ## Room state
@@ -73,5 +73,5 @@
 - Results (vote counts, top claims) are computed, never stored. Assumptions in `app/lib/mission.ts`: 3 votes per person, top group of 4 with ties included, one vote per claim per display name.
 - A claim or vote is own when its `author`, trimmed and lower-cased, equals the current display name, trimmed and lower-cased. Nothing about ownership is stored in the browser. The same name in another browser shows the same remaining votes, "Stimme zurücknehmen" and "Löschen".
 - Known limit (accepted): ownership is matched by display name only, case-insensitively. Anyone in the room who enters the same name is treated as that person. They see the same own votes and can take them back, use the remaining votes and delete that person's claims. This is a deliberate trade-off for keeping only free display names. It is not fixed with browser, device or account identifiers. The vote limit is still enforced in the browser only.
-- If a save, a delete or adding a claim or vote fails, the page shows "Speichern fehlgeschlagen. Versuch es noch einmal." 
+- If a save, a delete or adding a claim or vote fails, the page shows "Speichern fehlgeschlagen. Versuch es noch einmal."
 - The checklist shows seven questions, each with a checkbox. Ticking one stores its `mscheck.qn` through PATCH. Below the list: "Fragen frei formuliert nach LASR, CC BY-SA 4.0."
