@@ -23,6 +23,7 @@ aurora guides a team of 3 to 12 people through a LASR architecture review (missi
 - `app/components/ui/` – shadcn-vue components, added via the MCP server or `pnpm dlx shadcn-vue add`
 - `app/lib/utils.ts` – `cn` class-name helper for shadcn-vue
 - `app/assets/css/main.css` – Tailwind v4 entry and theme variables
+- `server/` – Nitro server: `api/` (room endpoints), `utils/` (room IDs, room store, admin check), `plugins/` (storage mount)
 - `public/` – static assets
 - `tests/` – vitest tests (`tests/**/*.test.ts`)
 
