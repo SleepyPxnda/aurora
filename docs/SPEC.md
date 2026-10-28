@@ -32,10 +32,10 @@
 
 - `GET /api/rooms/:roomId` returns `{ roomId, docs }`. `docs` maps each collection to its documents by `docId`: `{ [collection]: { [docId]: body } }`. Only documents that have been written appear.
 - `PUT /api/rooms/:roomId/docs/:collection/:docId` with a JSON object as body stores that object as one document and returns 204. Writes are last-writer-wins per document. Other documents are not changed.
-- `PATCH` on the same path merges a JSON object into the document (plain objects recursively, everything else replaces; a missing document is created) with the same checks as PUT, applied to the merged result. `DELETE` removes one document and returns 204, also when it does not exist.
+- `PATCH` on the same path merges a JSON object into the document (plain objects recursively, everything else replaces; a missing document is created) with the same checks as PUT, applied to the merged result. `DELETE` removes one document and returns 204, also when it does not exist. Merges are not serialized: two PATCHes to the same document at the same moment can lose one change.
 - Collections: `review`, `claims`, `votes`, `goals`, `risks`, `notes`. The list is defined in one place on the server.
 - `docId` matches `^[A-Za-z0-9_-]{1,64}$`.
-- Room page: the field "Name des Systems" is stored as document `review/main` under the key `system`. It is saved when the field loses focus. While the field has focus, incoming changes do not overwrite the text.
+- Room page: the field "Name des Systems" is stored as document `review/main` under the key `system`. It is saved through PATCH when the field loses focus. While the field has focus, incoming changes do not overwrite the text.
 - The room page polls `GET /api/rooms/:roomId` every 3 seconds, so a change saved in one browser shows up in another browser on the same room within 5 seconds.
 
 ## Storage
@@ -57,7 +57,16 @@
 - The room page for an unknown room shows "Diesen Raum gibt es nicht. Prüf den Link." with a link "Neuen Raum anlegen" to `/`. It does not ask for a display name.
 
 ## Step 1 Mission Statement
-- `review/main` holds `system`, `inScope`, `outScope` (text, at most 2000 characters) and `mscheck.q1` to `mscheck.q7` (booleans); every field is saved through PATCH.
-- `claims/<id>` is `{ text, at }` (1 to 140 characters, ISO timestamp); `votes/<id>` is `{ claimId }`. IDs are random, at least 128 bits. No document holds a participant or browser identifier.
-- A browser keeps the IDs of its own claims and votes in `localStorage` under `aurora.own.<roomId>`. Known limit: after clearing storage or on another device a person can vote again and cannot take back or delete earlier votes and claims. The vote limit is enforced in the browser only.
+
+- `review/main` holds `system`, `inScope`, `outScope` (text) and `mscheck.q1` to `mscheck.q7` (booleans). Each field is saved through PATCH, so the other keys stay unchanged. Incoming changes do not overwrite a focused frame field.
+- The browser stops `inScope` and `outScope` at 2000 characters. The server checks only the general limits (16 KB per document).
+- `claims/<id>` is `{ text, at }`: `text` is 1 to 140 characters after trimming, `at` is an ISO timestamp. `votes/<id>` is `{ claimId }`. IDs are random, at least 128 bits. The 1 to 140 check runs in the browser only. No document holds a participant or browser identifier.
+- Claims are listed oldest first by `at`, with the ID as tie-breaker.
+- The "Löschen" button shows only on claims created in this browser. The server does not check who deletes. Deleting a claim also deletes every vote with its `claimId`, whoever cast it. The browser sends these deletes one after another.
+- Each claim shows its vote count. Votes whose `claimId` points to no claim are left out of every count and of the remaining-votes count.
+- A browser has at most one vote per claim. Its remaining votes are 3 minus its active votes. At 0, every "Stimme geben" button is disabled and the page shows "Du hast alle 3 Stimmen vergeben."
+- Top claims: claims with at least one vote, sorted by vote count. A claim is a top claim if its count reaches the count of the claim in 4th place, so ties at 4th place are all included and more than 4 claims can be marked. Top claims carry the text label "Top 4".
 - Results (vote counts, top claims) are computed, never stored. Assumptions in `app/lib/mission.ts`: 3 votes per person, top group of 4 with ties included, one vote per claim per browser.
+- A browser keeps the IDs of its own claims and votes in `localStorage` under `aurora.own.<roomId>`, and they survive a reload. If storage is unavailable or holds invalid data, the lists start empty and are kept in memory only. Known limit: after clearing storage or on another device a person can vote again and cannot take back or delete earlier votes and claims. The vote limit is enforced in the browser only.
+- If a save, a delete or adding a claim or vote fails, the page shows "Speichern fehlgeschlagen. Versuch es noch einmal." The local lists change only after the server has confirmed the write.
+- The checklist shows seven questions, each with a checkbox. Ticking one stores its `mscheck.qn` through PATCH. Below the list: "Fragen frei formuliert nach LASR, CC BY-SA 4.0."
